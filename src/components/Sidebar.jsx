@@ -1,9 +1,10 @@
-import { Home, Search, Bell, Mail, User, Menu, X } from 'lucide-react';
+import { Home, Search, Bell, Mail, User, Menu, X, LogOut } from 'lucide-react';
 import { useSocial } from '../context/SocialContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
-  const { activeTab, setActiveTab, currentUser, notifications } = useSocial();
-  const unreadNotifications = notifications.filter(n => !n.read).length;
+  const { activeTab, setActiveTab, currentUser, user, unreadNotifications, logout } = useSocial();
+  const navigate = useNavigate();
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
@@ -12,6 +13,19 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
     { id: 'messages', icon: Mail, label: 'Messages' },
     { id: 'profile', icon: User, label: 'Profile' },
   ];
+
+  const handleNavClick = (id) => {
+    setActiveTab(id);
+    setMobileMenuOpen(false);
+    if (id === 'profile') {
+      navigate('/profile');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setMobileMenuOpen(false);
+  };
 
   return (
     <>
@@ -24,7 +38,7 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
       
       <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <h1 className="logo">Nexus</h1>
+          <h1 className="logo" onClick={() => handleNavClick('home')} style={{ cursor: 'pointer' }}>Nexus</h1>
         </div>
         
         <nav className="nav-menu">
@@ -32,10 +46,7 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
             <button
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab(item.id);
-                setMobileMenuOpen(false);
-              }}
+              onClick={() => handleNavClick(item.id)}
             >
               <item.icon size={24} />
               <span>{item.label}</span>
@@ -47,17 +58,25 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-card">
+          <div className="user-card" onClick={() => handleNavClick('profile')}>
             <img 
-              src={currentUser.avatar} 
-              alt={currentUser.name}
+              src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} 
+              alt={user?.name}
               className="user-avatar"
             />
             <div className="user-info">
-              <span className="user-name">{currentUser.name}</span>
-              <span className="user-handle">@{currentUser.username}</span>
+              <span className="user-name">{user?.name}</span>
+              <span className="user-handle">@{user?.username}</span>
             </div>
           </div>
+          <button 
+            className="nav-item" 
+            onClick={handleLogout}
+            style={{ color: 'var(--error)', marginTop: '8px' }}
+          >
+            <LogOut size={24} />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
     </>

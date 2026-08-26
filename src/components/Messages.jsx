@@ -1,76 +1,75 @@
-import { useState } from 'react';
-import { Send, Search, MoreVertical, Phone, Video } from 'lucide-react';
-
-const mockConversations = [
-  {
-    id: 1,
-    user: 'sarah_dev',
-    name: 'Sarah Chen',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
-    lastMessage: 'That sounds great! Let me know when you\'re free',
-    time: '2m ago',
-    unread: 2,
-    online: true,
-    messages: [
-      { id: 1, text: 'Hey! Did you see the new design?', sent: false, time: '10:30 AM' },
-      { id: 2, text: 'Yes! It looks amazing 🔥', sent: true, time: '10:32 AM' },
-      { id: 3, text: 'Want to pair on the implementation?', sent: false, time: '10:33 AM' },
-      { id: 4, text: 'That sounds great! Let me know when you\'re free', sent: false, time: '10:35 AM' },
-    ]
-  },
-  {
-    id: 2,
-    user: 'mike_ux',
-    name: 'Mike Thompson',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mike',
-    lastMessage: 'The prototype is ready for review',
-    time: '1h ago',
-    unread: 0,
-    online: false,
-    messages: [
-      { id: 1, text: 'Can you check the latest mockups?', sent: false, time: '9:00 AM' },
-      { id: 2, text: 'On it!', sent: true, time: '9:15 AM' },
-      { id: 3, text: 'The prototype is ready for review', sent: false, time: '11:00 AM' },
-    ]
-  },
-  {
-    id: 3,
-    user: 'emma_w',
-    name: 'Emma Wilson',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emma',
-    lastMessage: 'Thanks for the book recommendation!',
-    time: '3h ago',
-    unread: 0,
-    online: true,
-    messages: [
-      { id: 1, text: 'You should read Atomic Habits', sent: true, time: '8:00 AM' },
-      { id: 2, text: 'Thanks for the book recommendation!', sent: false, time: '11:00 AM' },
-    ]
-  }
-];
+import { useState, useEffect, useRef } from 'react';
+import { useSocial } from '../context/SocialContext';
+import { Send, Search, MoreVertical, Phone, Video, ArrowLeft } from 'lucide-react';
 
 export default function Messages() {
-  const [conversations] = useState(mockConversations);
-  const [selectedConversation, setSelectedConversation] = useState(mockConversations[0]);
+  const { conversations, fetchConversations, fetchMessages, sendMessage, user } = useSocial();
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const messagesEndRef = useRef(null);
 
-  const handleSend = () => {
-    if (!newMessage.trim()) return;
-    const updatedConversation = {
-      ...selectedConversation,
-      messages: [
-        ...selectedConversation.messages,
-        { id: Date.now(), text: newMessage, sent: true, time: 'Now' }
-      ],
-      lastMessage: newMessage
-    };
-    setSelectedConversation(updatedConversation);
-    setNewMessage('');
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      loadMessages(selectedConversation.user_id);
+    }
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const loadMessages = async (userId) => {
+    setLoadingMessages(true);
+    try {
+      const data = await fetchMessages(userId);
+      setMessages(data);
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    }
+    setLoadingMessages(false);
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleSend = async () => {
+    if (!newMessage.trim() || !selectedConversation) return;
+    try {
+      const message = await sendMessage(selectedConversation.user_id, newMessage);
+      setMessages([...messages, message]);
+      setNewMessage('');
+      fetchConversations(); // Update conversation list
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+  };
+
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   return (
     <div className="messages">
-      <div className="messages-sidebar">
+      <div className={`messages-sidebar ${selectedConversation ? 'hidden-mobile' : ''}`}>
         <header className="messages-header">
           <h2>Messages</h2>
         </header>
@@ -81,70 +80,119 @@ export default function Messages() {
         </div>
 
         <div className="conversations-list">
-          {conversations.map((conv) => (
-            <div 
-              key={conv.id}
-              className={`conversation-item ${selectedConversation.id === conv.id ? 'active' : ''}`}
-              onClick={() => setSelectedConversation(conv)}
-            >
-              <div className="conv-avatar-wrapper">
-                <img src={conv.avatar} alt={conv.name} className="conv-avatar" />
-                {conv.online && <span className="online-indicator" />}
-              </div>
-              <div className="conv-info">
-                <div className="conv-header">
-                  <span className="conv-name">{conv.name}</span>
-                  <span className="conv-time">{conv.time}</span>
+          {conversations.length === 0 ? (
+            <p style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              No conversations yet
+            </p>
+          ) : (
+            conversations.map((conv) => (
+              <div 
+                key={conv.user_id}
+                className={`conversation-item ${selectedConversation?.user_id === conv.user_id ? 'active' : ''}`}
+                onClick={() => setSelectedConversation(conv)}
+              >
+                <div className="conv-avatar-wrapper">
+                  <img src={conv.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.username}`} alt={conv.name} className="conv-avatar" />
                 </div>
-                <p className="conv-last-message">{conv.lastMessage}</p>
+                <div className="conv-info">
+                  <div className="conv-header">
+                    <span className="conv-name">{conv.name}</span>
+                    <span className="conv-time">{conv.last_time ? formatDate(conv.last_time) : ''}</span>
+                  </div>
+                  <p className="conv-last-message">{conv.last_message || 'No messages yet'}</p>
+                </div>
+                {conv.unread_count > 0 && (
+                  <span className="unread-badge">{conv.unread_count}</span>
+                )}
               </div>
-              {conv.unread > 0 && (
-                <span className="unread-badge">{conv.unread}</span>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
-      <div className="chat-area">
-        <header className="chat-header">
-          <div className="chat-user">
-            <img src={selectedConversation.avatar} alt={selectedConversation.name} />
-            <div>
-              <span className="chat-name">{selectedConversation.name}</span>
-              <span className="chat-status">
-                {selectedConversation.online ? 'Online' : 'Offline'}
-              </span>
-            </div>
-          </div>
-          <div className="chat-actions">
-            <button><Phone size={20} /></button>
-            <button><Video size={20} /></button>
-            <button><MoreVertical size={20} /></button>
-          </div>
-        </header>
+      <div className={`chat-area ${!selectedConversation ? 'hidden-mobile' : ''}`}>
+        {selectedConversation ? (
+          <>
+            <header className="chat-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button 
+                  className="back-btn"
+                  onClick={() => setSelectedConversation(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    display: 'none'
+                  }}
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <div className="chat-user">
+                  <img 
+                    src={selectedConversation.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedConversation.username}`} 
+                    alt={selectedConversation.name} 
+                  />
+                  <div>
+                    <span className="chat-name">{selectedConversation.name}</span>
+                    <span className="chat-status">@{selectedConversation.username}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="chat-actions">
+                <button><Phone size={20} /></button>
+                <button><Video size={20} /></button>
+                <button><MoreVertical size={20} /></button>
+              </div>
+            </header>
 
-        <div className="chat-messages">
-          {selectedConversation.messages.map((msg) => (
-            <div key={msg.id} className={`message ${msg.sent ? 'sent' : 'received'}`}>
-              <p>{msg.text}</p>
-              <span className="message-time">{msg.time}</span>
+            <div className="chat-messages">
+              {loadingMessages ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading messages...</p>
+              ) : messages.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  No messages yet. Say hello! 👋
+                </p>
+              ) : (
+                messages.map((msg) => (
+                  <div 
+                    key={msg.id} 
+                    className={`message ${msg.sender_id === user?.id ? 'sent' : 'received'}`}
+                  >
+                    <p>{msg.content}</p>
+                    <span className="message-time">{formatTime(msg.created_at)}</span>
+                  </div>
+                ))
+              )}
+              <div ref={messagesEndRef} />
             </div>
-          ))}
-        </div>
 
-        <div className="chat-input">
-          <input
-            type="text"
-            placeholder="Type a message..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          />
-          <button onClick={handleSend} disabled={!newMessage.trim()}>
-            <Send size={20} />
-          </button>
-        </div>
+            <div className="chat-input">
+              <input
+                type="text"
+                placeholder="Type a message..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              />
+              <button onClick={handleSend} disabled={!newMessage.trim()}>
+                <Send size={20} />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center', 
+            justifyContent: 'center',
+            color: 'var(--text-secondary)'
+          }}>
+            <h3 style={{ marginBottom: '8px' }}>Select a conversation</h3>
+            <p>Choose from your existing conversations</p>
+          </div>
+        )}
       </div>
     </div>
   );

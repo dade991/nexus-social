@@ -1,39 +1,62 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useSocial } from '../context/SocialContext';
 import Post from './Post';
-import { Image, Smile, Send } from 'lucide-react';
+import { Image, Smile, Send, RefreshCw } from 'lucide-react';
 
 export default function Feed() {
-  const { posts, addPost, currentUser } = useSocial();
+  const { posts, createPost, user, fetchPosts } = useSocial();
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [isPosting, setIsPosting] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!newPostContent.trim() && !selectedImage) return;
-    addPost(newPostContent, selectedImage);
-    setNewPostContent('');
-    setSelectedImage(null);
-    setIsPosting(false);
+    setPosting(true);
+    try {
+      await createPost(newPostContent, selectedImage);
+      setNewPostContent('');
+      setSelectedImage(null);
+      setImagePreview(null);
+      setIsPosting(false);
+    } catch (err) {
+      console.error('Failed to create post:', err);
+      alert(err.message);
+    }
+    setPosting(false);
   };
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setSelectedImage(file);
       const reader = new FileReader();
-      reader.onload = (e) => setSelectedImage(e.target.result);
+      reader.onload = (e) => setImagePreview(e.target.result);
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleRefresh = () => {
+    fetchPosts();
   };
 
   return (
     <div className="feed">
       <header className="feed-header">
         <h2>Home</h2>
+        <button onClick={handleRefresh} className="refresh-btn" title="Refresh">
+          <RefreshCw size={20} />
+        </button>
       </header>
 
       <div className="create-post">
-        <img src={currentUser.avatar} alt={currentUser.name} className="create-post-avatar" />
+        <img 
+          src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} 
+          alt={user?.name} 
+          className="create-post-avatar" 
+        />
         <div className="create-post-input-area">
           <textarea
             placeholder="What's happening?"
@@ -45,12 +68,15 @@ export default function Feed() {
           
           {isPosting && (
             <>
-              {selectedImage && (
+              {imagePreview && (
                 <div className="image-preview-container">
-                  <img src={selectedImage} alt="Preview" className="image-preview" />
+                  <img src={imagePreview} alt="Preview" className="image-preview" />
                   <button 
                     className="remove-image"
-                    onClick={() => setSelectedImage(null)}
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setImagePreview(null);
+                    }}
                   >
                     ×
                   </button>
@@ -62,6 +88,7 @@ export default function Feed() {
                   <label className="tool-btn">
                     <Image size={18} />
                     <input 
+                      ref={fileInputRef}
                       type="file" 
                       accept="image/*" 
                       onChange={handleImageSelect}
@@ -75,10 +102,14 @@ export default function Feed() {
                 <button 
                   className="post-btn"
                   onClick={handlePost}
-                  disabled={!newPostContent.trim() && !selectedImage}
+                  disabled={(!newPostContent.trim() && !selectedImage) || posting}
                 >
-                  <Send size={18} />
-                  Post
+                  {posting ? 'Posting...' : (
+                    <>
+                      <Send size={18} />
+                      Post
+                    </>
+                  )}
                 </button>
               </div>
             </>
@@ -87,9 +118,15 @@ export default function Feed() {
       </div>
 
       <div className="posts-feed">
-        {posts.map((post) => (
-          <Post key={post.id} post={post} />
-        ))}
+        {posts.length === 0 ? (
+          <p style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            No posts yet. Be the first to post something!
+          </p>
+        ) : (
+          posts.map((post) => (
+            <Post key={post.id} post={post} />
+          ))
+        )}
       </div>
     </div>
   );

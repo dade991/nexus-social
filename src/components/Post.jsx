@@ -1,75 +1,115 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSocial } from '../context/SocialContext';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, Share2, Bookmark, Send, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Send, Trash2 } from 'lucide-react';
 
-export default function Post({ post }) {
-  const { likePost, addComment } = useSocial();
+export default function Post({ post, showFull = true, onClick }) {
+  const { likePost, fetchComments, addComment, user, deletePost } = useSocial();
   const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [saved, setSaved] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(false);
 
-  const handleAddComment = () => {
+  const handleToggleComments = async () => {
+    if (!showComments && comments.length === 0) {
+      setLoadingComments(true);
+      try {
+        const data = await fetchComments(post.id);
+        setComments(data);
+      } catch (err) {
+        console.error('Failed to fetch comments:', err);
+      }
+      setLoadingComments(false);
+    }
+    setShowComments(!showComments);
+  };
+
+  const handleAddComment = async () => {
     if (!newComment.trim()) return;
-    addComment(post.id, newComment);
-    setNewComment('');
+    try {
+      const comment = await addComment(post.id, newComment);
+      setComments([...comments, comment]);
+      setNewComment('');
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('Delete this post?')) {
+      await deletePost(post.id);
+    }
+  };
+
+  const handlePostClick = () => {
+    if (onClick) onClick(post);
   };
 
   return (
-    <article className="post">
+    <article className="post" onClick={handlePostClick}>
       <div className="post-header">
-        <img src={post.avatar} alt={post.name} className="post-avatar" />
+        <img src={post.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.username}`} alt={post.name} className="post-avatar" />
         <div className="post-meta">
           <span className="post-author">{post.name}</span>
           <span className="post-handle">@{post.username}</span>
           <span className="post-dot">·</span>
           <span className="post-time">
-            {formatDistanceToNow(post.createdAt, { addSuffix: true })}
+            {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
           </span>
         </div>
+        {user && user.id === post.user_id && (
+          <button className="delete-post-btn" onClick={(e) => { e.stopPropagation(); handleDelete(); }}>
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
 
       <div className="post-content">
         <p>{post.content}</p>
         {post.image && (
-          <img src={post.image} alt="Post" className="post-image" />
+          <img 
+            src={post.image.startsWith('http') ? post.image : post.image} 
+            alt="Post" 
+            className="post-image" 
+          />
         )}
       </div>
 
       <div className="post-actions">
         <button 
           className={`action-btn ${post.liked ? 'liked' : ''}`}
-          onClick={() => likePost(post.id)}
+          onClick={(e) => { e.stopPropagation(); likePost(post.id); }}
         >
-          <Heart size={18} fill={post.liked ? '#e63946' : 'none'} />
-          <span>{post.likes}</span>
+          <Heart size={18} fill={post.liked ? '#f91880' : 'none'} />
+          <span>{post.likes_count || 0}</span>
         </button>
         
         <button 
           className={`action-btn ${showComments ? 'active' : ''}`}
-          onClick={() => setShowComments(!showComments)}
+          onClick={(e) => { e.stopPropagation(); handleToggleComments(); }}
         >
           <MessageCircle size={18} />
-          <span>{post.comments.length}</span>
+          <span>{post.comments_count || 0}</span>
         </button>
         
-        <button className="action-btn">
+        <button className="action-btn" onClick={(e) => e.stopPropagation()}>
           <Share2 size={18} />
         </button>
         
         <button 
           className={`action-btn ${saved ? 'saved' : ''}`}
-          onClick={() => setSaved(!saved)}
+          onClick={(e) => { e.stopPropagation(); setSaved(!saved); }}
         >
           <Bookmark size={18} fill={saved ? '#1d9bf0' : 'none'} />
         </button>
       </div>
 
       {showComments && (
-        <div className="comments-section">
+        <div className="comments-section" onClick={(e) => e.stopPropagation()}>
           <div className="comment-input-wrapper">
             <img 
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=alex" 
+              src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} 
               alt="You" 
               className="comment-avatar"
             />
@@ -88,27 +128,31 @@ export default function Post({ post }) {
             )}
           </div>
 
-          <div className="comments-list">
-            {post.comments.map((comment) => (
-              <div key={comment.id} className="comment">
-                <img 
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.username}`} 
-                  alt={comment.name}
-                  className="comment-avatar"
-                />
-                <div className="comment-body">
-                  <div className="comment-header">
-                    <span className="comment-author">{comment.name}</span>
-                    <span className="comment-handle">@{comment.username}</span>
-                    <span className="comment-time">
-                      {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
-                    </span>
+          {loadingComments ? (
+            <p style={{ padding: '16px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading comments...</p>
+          ) : (
+            <div className="comments-list">
+              {comments.map((comment) => (
+                <div key={comment.id} className="comment">
+                  <img 
+                    src={comment.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.username}`} 
+                    alt={comment.name}
+                    className="comment-avatar"
+                  />
+                  <div className="comment-body">
+                    <div className="comment-header">
+                      <span className="comment-author">{comment.name}</span>
+                      <span className="comment-handle">@{comment.username}</span>
+                      <span className="comment-time">
+                        {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <p className="comment-text">{comment.content}</p>
                   </div>
-                  <p className="comment-text">{comment.content}</p>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </article>
