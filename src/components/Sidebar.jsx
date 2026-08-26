@@ -1,10 +1,8 @@
 import { Home, Search, Bell, Mail, User, Menu, X, LogOut } from 'lucide-react';
 import { useSocial } from '../context/SocialContext';
-import { useNavigate } from 'react-router-dom';
 
 export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
-  const { activeTab, setActiveTab, currentUser, user, unreadNotifications, logout } = useSocial();
-  const navigate = useNavigate();
+  const { activeTab, setActiveTab, user, unreadNotifications, logout } = useSocial();
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
@@ -17,9 +15,6 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
   const handleNavClick = (id) => {
     setActiveTab(id);
     setMobileMenuOpen(false);
-    if (id === 'profile') {
-      navigate('/profile');
-    }
   };
 
   const handleLogout = () => {
@@ -60,7 +55,7 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
         <div className="sidebar-footer">
           <div className="user-card" onClick={() => handleNavClick('profile')}>
             <img 
-              src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} 
+              src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || 'user'}`} 
               alt={user?.name}
               className="user-avatar"
             />

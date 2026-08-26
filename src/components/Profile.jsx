@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSocial } from '../context/SocialContext';
-import { MapPin, Link as LinkIcon, Calendar, Settings, LogOut, Edit2 } from 'lucide-react';
+import { Calendar, LogOut, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import Post from './Post';
 
@@ -23,13 +23,15 @@ export default function Profile({ userId }) {
       setLoading(true);
       try {
         const profileData = await fetchUserProfile(targetUserId);
-        setProfile(profileData);
-        setIsFollowing(profileData.isFollowing);
-        setEditName(profileData.name);
-        setEditBio(profileData.bio);
+        if (profileData) {
+          setProfile(profileData);
+          setIsFollowing(profileData.isFollowing || false);
+          setEditName(profileData.name || '');
+          setEditBio(profileData.bio || '');
+        }
         
         const postsData = await fetchUserPosts(targetUserId);
-        setUserPosts(postsData);
+        setUserPosts(postsData || []);
       } catch (err) {
         console.error('Failed to load profile:', err);
       }
@@ -42,10 +44,10 @@ export default function Profile({ userId }) {
     try {
       const result = await followUser(targetUserId);
       setIsFollowing(result.following);
-      setProfile(prev => ({
+      setProfile(prev => prev ? {
         ...prev,
-        followers_count: result.following ? prev.followers_count + 1 : prev.followers_count - 1
-      }));
+        followers_count: result.following ? (prev.followers_count || 0) + 1 : (prev.followers_count || 1) - 1
+      } : null);
     } catch (err) {
       console.error('Failed to follow:', err);
     }
@@ -57,17 +59,23 @@ export default function Profile({ userId }) {
     formData.append('bio', editBio);
     
     try {
-      await updateProfile(formData);
-      setProfile(prev => ({ ...prev, name: editName, bio: editBio }));
+      const updated = await updateProfile(formData);
+      if (updated) {
+        setProfile(prev => prev ? { ...prev, name: editName, bio: editBio } : prev);
+      }
       setIsEditing(false);
     } catch (err) {
       console.error('Failed to update profile:', err);
     }
   };
 
+  const handleLogout = () => {
+    logout();
+  };
+
   if (loading) {
     return (
-      <div className="profile" style={{ textAlign: 'center', padding: '50px' }}>
+      <div className="profile" style={{ textAlign: 'center', padding: '50px', color: 'var(--text-secondary)' }}>
         <p>Loading profile...</p>
       </div>
     );
@@ -75,7 +83,7 @@ export default function Profile({ userId }) {
 
   if (!profile) {
     return (
-      <div className="profile" style={{ textAlign: 'center', padding: '50px' }}>
+      <div className="profile" style={{ textAlign: 'center', padding: '50px', color: 'var(--text-secondary)' }}>
         <p>User not found</p>
       </div>
     );
@@ -97,10 +105,10 @@ export default function Profile({ userId }) {
           <div className="profile-actions">
             {isOwnProfile ? (
               <>
-                <button className="settings-btn">
-                  <Settings size={20} />
+                <button className="settings-btn" onClick={() => setIsEditing(true)}>
+                  <Edit2 size={20} />
                 </button>
-                <button className="logout-btn" onClick={logout} title="Logout">
+                <button className="logout-btn" onClick={handleLogout} title="Logout">
                   <LogOut size={20} />
                 </button>
               </>
@@ -156,49 +164,33 @@ export default function Profile({ userId }) {
             </div>
           </div>
         ) : (
-          <div className="bio-row">
-            <p className="profile-bio">{profile.bio || 'No bio yet'}</p>
-            {isOwnProfile && (
-              <button onClick={() => setIsEditing(true)} className="edit-bio-btn">
-                <Edit2 size={14} />
-              </button>
-            )}
-          </div>
+          <p className="profile-bio" style={{ marginBottom: '12px' }}>
+            {profile.bio || 'No bio yet'}
+          </p>
         )}
 
         <div className="profile-stats">
           <div className="stat-item">
-            <MapPin size={16} />
-            <span>San Francisco, CA</span>
-          </div>
-          <div className="stat-item">
-            <LinkIcon size={16} />
-            <a href="#" className="profile-link">nexus.app</a>
-          </div>
-          <div className="stat-item">
             <Calendar size={16} />
-            <span>Joined {format(new Date(profile.created_at), 'MMMM yyyy')}</span>
+            <span>Joined {profile.created_at ? format(new Date(profile.created_at), 'MMMM yyyy') : 'recently'}</span>
           </div>
         </div>
 
         <div className="profile-numbers">
-          <span><strong>{profile.following_count}</strong> Following</span>
-          <span><strong>{profile.followers_count}</strong> Followers</span>
-          <span><strong>{profile.posts_count}</strong> Posts</span>
+          <span><strong>{profile.following_count || 0}</strong> Following</span>
+          <span><strong>{profile.followers_count || 0}</strong> Followers</span>
+          <span><strong>{profile.posts_count || userPosts.length}</strong> Posts</span>
         </div>
       </div>
 
       <div className="profile-tabs">
         <button className="tab active">Posts</button>
-        <button className="tab">Replies</button>
-        <button className="tab">Media</button>
-        <button className="tab">Likes</button>
       </div>
 
       <div className="profile-posts">
         {userPosts.length > 0 ? (
           userPosts.map((post) => (
-            <Post key={post.id} post={post} showFull={true} />
+            <Post key={post.id} post={post} />
           ))
         ) : (
           <p className="no-posts">No posts yet</p>

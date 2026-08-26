@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useSocial } from '../context/SocialContext';
-import { Search as SearchIcon, TrendingUp, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search as SearchIcon, TrendingUp } from 'lucide-react';
 
 export default function Search() {
-  const { searchUsers, user } = useSocial();
+  const { searchUsers, user, setActiveTab } = useSocial();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -28,6 +27,10 @@ export default function Search() {
     setSearching(false);
   };
 
+  const viewProfile = (userId) => {
+    setActiveTab('profile');
+  };
+
   return (
     <div className="search-page">
       <header className="search-header">
@@ -35,7 +38,7 @@ export default function Search() {
           <SearchIcon size={20} />
           <input
             type="text"
-            placeholder="Search people, posts, or topics..."
+            placeholder="Search people..."
             value={query}
             onChange={handleSearch}
             className="search-input"
@@ -44,7 +47,7 @@ export default function Search() {
       </header>
 
       {query.length >= 2 ? (
-        <section className="search-results">
+        <section className="search-section">
           <h3>Results for "{query}"</h3>
           {searching ? (
             <p className="no-results">Searching...</p>
@@ -53,7 +56,11 @@ export default function Search() {
           ) : (
             <div className="suggested-users">
               {results.map((u) => (
-                <div key={u.id} className="suggested-user">
+                <div 
+                  key={u.id} 
+                  className="suggested-user"
+                  onClick={() => viewProfile(u.id)}
+                >
                   <img 
                     src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`} 
                     alt={u.name} 
@@ -62,7 +69,7 @@ export default function Search() {
                   <div className="suggested-info">
                     <span className="suggested-name">{u.name}</span>
                     <span className="suggested-handle">@{u.username}</span>
-                    <span className="suggested-bio">{u.bio || `${u.followers_count} followers`}</span>
+                    <span className="suggested-bio">{u.bio || `${u.followers_count || 0} followers`}</span>
                   </div>
                 </div>
               ))}
@@ -70,23 +77,15 @@ export default function Search() {
           )}
         </section>
       ) : (
-        <>
-          <section className="search-section">
-            <h3>
-              <TrendingUp size={18} />
-              Suggested Users
-            </h3>
-            <div className="suggested-users">
-              {results.length === 0 && (
-                <>
-                  <p className="no-results" style={{ padding: '16px', textAlign: 'center' }}>
-                    Type to search for users
-                  </p>
-                </>
-              )}
-            </div>
-          </section>
-        </>
+        <section className="search-section">
+          <h3>
+            <TrendingUp size={18} />
+            Search for Users
+          </h3>
+          <p className="no-results" style={{ padding: '16px', textAlign: 'center' }}>
+            Type at least 2 characters to search for users
+          </p>
+        </section>
       )}
     </div>
   );
