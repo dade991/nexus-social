@@ -2,7 +2,69 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const SocialContext = createContext();
 
-const API_URL = '';
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+const DEMO_MODE = !API_URL;
+
+const demoUser = {
+  id: 'demo-user-1',
+  username: 'demo_user',
+  email: 'demo@nexus.app',
+  name: 'Demo User',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
+  bio: 'This is a demo account',
+  followers_count: 123,
+  following_count: 456,
+  posts_count: 78
+};
+
+const demoPosts = [
+  {
+    id: '1',
+    user_id: 'demo-user-1',
+    username: 'demo_user',
+    name: 'Demo User',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
+    content: 'Welcome to Nexus! 🎉 This is a demo post. Sign up or login to create your own posts, like, comment, and connect with others!',
+    image: '',
+    likes_count: 42,
+    comments_count: 5,
+    liked: false,
+    created_at: new Date(Date.now() - 3600000).toISOString()
+  },
+  {
+    id: '2',
+    user_id: 'demo-user-2',
+    username: 'alex_dev',
+    name: 'Alex Developer',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex',
+    content: 'Just shipped a new feature! 🚀 The possibilities are endless when you love what you do. #coding #development',
+    image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=600',
+    likes_count: 128,
+    comments_count: 23,
+    liked: true,
+    created_at: new Date(Date.now() - 7200000).toISOString()
+  },
+  {
+    id: '3',
+    user_id: 'demo-user-3',
+    username: 'sarah_design',
+    name: 'Sarah Designer',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
+    content: 'Design is not just what it looks like and feels like. Design is how it works. 💡 #design #ux',
+    image: '',
+    likes_count: 89,
+    comments_count: 12,
+    liked: false,
+    created_at: new Date(Date.now() - 14400000).toISOString()
+  }
+];
+
+const demoNotifications = [
+  { id: '1', type: 'like', from_user_id: 'demo-user-2', username: 'alex_dev', name: 'Alex Developer', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex', content: '', read: 0, created_at: new Date(Date.now() - 600000).toISOString() },
+  { id: '2', type: 'follow', from_user_id: 'demo-user-3', username: 'sarah_design', name: 'Sarah Designer', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah', content: '', read: 0, created_at: new Date(Date.now() - 1800000).toISOString() },
+  { id: '3', type: 'comment', from_user_id: 'demo-user-4', username: 'mike_code', name: 'Mike Coder', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mike', content: 'Great post!', read: 1, created_at: new Date(Date.now() - 3600000).toISOString() }
+];
 
 export function SocialProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -14,8 +76,15 @@ export function SocialProvider({ children }) {
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Check if logged in on mount
   useEffect(() => {
+    if (DEMO_MODE) {
+      setUser(demoUser);
+      setPosts(demoPosts);
+      setNotifications(demoNotifications);
+      setLoading(false);
+      return;
+    }
+
     const initAuth = async () => {
       if (token) {
         try {
@@ -25,12 +94,18 @@ export function SocialProvider({ children }) {
           if (res.ok) {
             const userData = await res.json();
             setUser(userData);
+            fetchPosts();
+            fetchNotifications();
+            fetchConversations();
           } else {
             localStorage.removeItem('token');
             setToken(null);
           }
         } catch (err) {
           console.error('Auth check failed:', err);
+          setUser(demoUser);
+          setPosts(demoPosts);
+          setNotifications(demoNotifications);
         }
       }
       setLoading(false);
@@ -38,16 +113,15 @@ export function SocialProvider({ children }) {
     initAuth();
   }, [token]);
 
-  // Fetch posts when logged in
-  useEffect(() => {
-    if (user) {
-      fetchPosts();
-      fetchNotifications();
-      fetchConversations();
-    }
-  }, [user]);
-
   const login = async (email, password) => {
+    if (DEMO_MODE) {
+      const demoToken = 'demo-token-' + Date.now();
+      localStorage.setItem('token', demoToken);
+      setToken(demoToken);
+      setUser(demoUser);
+      return { token: demoToken, user: demoUser };
+    }
+
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,6 +137,14 @@ export function SocialProvider({ children }) {
   };
 
   const register = async (username, email, password, name) => {
+    if (DEMO_MODE) {
+      const demoToken = 'demo-token-' + Date.now();
+      localStorage.setItem('token', demoToken);
+      setToken(demoToken);
+      setUser({ ...demoUser, username, email, name });
+      return { token: demoToken, user: { ...demoUser, username, email, name } };
+    }
+
     const res = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -84,9 +166,18 @@ export function SocialProvider({ children }) {
     setPosts([]);
     setNotifications([]);
     setConversations([]);
+    if (DEMO_MODE) {
+      setUser(demoUser);
+      setPosts(demoPosts);
+      setNotifications(demoNotifications);
+    }
   };
 
   const fetchPosts = async () => {
+    if (DEMO_MODE) {
+      setPosts(demoPosts);
+      return;
+    }
     try {
       const res = await fetch(`${API_URL}/api/posts/explore`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -99,6 +190,24 @@ export function SocialProvider({ children }) {
   };
 
   const createPost = async (content, imageFile) => {
+    if (DEMO_MODE) {
+      const newPost = {
+        id: 'demo-' + Date.now(),
+        user_id: user.id,
+        username: user.username,
+        name: user.name,
+        avatar: user.avatar,
+        content,
+        image: '',
+        likes_count: 0,
+        comments_count: 0,
+        liked: false,
+        created_at: new Date().toISOString()
+      };
+      setPosts([newPost, ...posts]);
+      return newPost;
+    }
+
     const formData = new FormData();
     formData.append('content', content);
     if (imageFile) formData.append('image', imageFile);
@@ -116,6 +225,10 @@ export function SocialProvider({ children }) {
   };
 
   const deletePost = async (postId) => {
+    if (DEMO_MODE) {
+      setPosts(posts.filter(p => p.id !== postId));
+      return;
+    }
     const res = await fetch(`${API_URL}/api/posts/${postId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
@@ -129,7 +242,6 @@ export function SocialProvider({ children }) {
     const post = posts.find(p => p.id === postId);
     const newLiked = !post.liked;
     
-    // Optimistic update
     setPosts(posts.map(p => 
       p.id === postId ? { 
         ...p, 
@@ -138,13 +250,14 @@ export function SocialProvider({ children }) {
       } : p
     ));
 
+    if (DEMO_MODE) return;
+
     try {
       await fetch(`${API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
     } catch (err) {
-      // Revert on error
       setPosts(posts.map(p => 
         p.id === postId ? { ...p, liked: !newLiked, likes_count: post.likes_count } : p
       ));
@@ -152,6 +265,7 @@ export function SocialProvider({ children }) {
   };
 
   const fetchComments = async (postId) => {
+    if (DEMO_MODE) return [];
     const res = await fetch(`${API_URL}/api/posts/${postId}/comments`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -159,6 +273,23 @@ export function SocialProvider({ children }) {
   };
 
   const addComment = async (postId, content) => {
+    if (DEMO_MODE) {
+      const comment = {
+        id: 'demo-comment-' + Date.now(),
+        post_id: postId,
+        user_id: user.id,
+        username: user.username,
+        name: user.name,
+        avatar: user.avatar,
+        content,
+        created_at: new Date().toISOString()
+      };
+      setPosts(posts.map(p => 
+        p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p
+      ));
+      return comment;
+    }
+
     const res = await fetch(`${API_URL}/api/posts/${postId}/comments`, {
       method: 'POST',
       headers: { 
@@ -177,6 +308,7 @@ export function SocialProvider({ children }) {
   };
 
   const fetchNotifications = async () => {
+    if (DEMO_MODE) return;
     try {
       const res = await fetch(`${API_URL}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -189,6 +321,10 @@ export function SocialProvider({ children }) {
   };
 
   const markNotificationRead = async (id) => {
+    if (DEMO_MODE) {
+      setNotifications(notifications.map(n => n.id === id ? { ...n, read: 1 } : n));
+      return;
+    }
     await fetch(`${API_URL}/api/notifications/${id}/read`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` }
@@ -197,6 +333,10 @@ export function SocialProvider({ children }) {
   };
 
   const markAllNotificationsRead = async () => {
+    if (DEMO_MODE) {
+      setNotifications(notifications.map(n => ({ ...n, read: 1 })));
+      return;
+    }
     await fetch(`${API_URL}/api/notifications/read-all`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` }
@@ -205,6 +345,7 @@ export function SocialProvider({ children }) {
   };
 
   const fetchConversations = async () => {
+    if (DEMO_MODE) return;
     try {
       const res = await fetch(`${API_URL}/api/messages/conversations`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -217,6 +358,7 @@ export function SocialProvider({ children }) {
   };
 
   const fetchMessages = async (userId) => {
+    if (DEMO_MODE) return [];
     const res = await fetch(`${API_URL}/api/messages/${userId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -224,6 +366,18 @@ export function SocialProvider({ children }) {
   };
 
   const sendMessage = async (userId, content) => {
+    if (DEMO_MODE) {
+      return {
+        id: 'demo-msg-' + Date.now(),
+        sender_id: user.id,
+        receiver_id: userId,
+        content,
+        sender_username: user.username,
+        sender_name: user.name,
+        sender_avatar: user.avatar,
+        created_at: new Date().toISOString()
+      };
+    }
     const res = await fetch(`${API_URL}/api/messages/${userId}`, {
       method: 'POST',
       headers: { 
@@ -238,6 +392,7 @@ export function SocialProvider({ children }) {
   };
 
   const fetchUserProfile = async (userId) => {
+    if (DEMO_MODE) return { ...demoUser, id: userId, isFollowing: false };
     const res = await fetch(`${API_URL}/api/users/${userId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -245,6 +400,7 @@ export function SocialProvider({ children }) {
   };
 
   const fetchUserPosts = async (userId) => {
+    if (DEMO_MODE) return demoPosts.filter(p => p.user_id === userId);
     const res = await fetch(`${API_URL}/api/users/${userId}/posts`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -252,6 +408,9 @@ export function SocialProvider({ children }) {
   };
 
   const followUser = async (userId) => {
+    if (DEMO_MODE) {
+      return { following: true };
+    }
     const res = await fetch(`${API_URL}/api/users/${userId}/follow`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
@@ -261,6 +420,7 @@ export function SocialProvider({ children }) {
   };
 
   const updateProfile = async (formData) => {
+    if (DEMO_MODE) return user;
     const res = await fetch(`${API_URL}/api/users/profile`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
@@ -273,6 +433,7 @@ export function SocialProvider({ children }) {
   };
 
   const searchUsers = async (query) => {
+    if (DEMO_MODE) return [];
     const res = await fetch(`${API_URL}/api/users/search/${query}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -314,7 +475,8 @@ export function SocialProvider({ children }) {
       followUser,
       updateProfile,
       searchUsers,
-      API_URL
+      API_URL,
+      isDemoMode: DEMO_MODE
     }}>
       {children}
     </SocialContext.Provider>

@@ -125,8 +125,18 @@ export default function Auth() {
 
         {isLogin && (
           <div className="demo-accounts">
-            <p>Demo accounts:</p>
-            <small>Email: alex@example.com | Password: password123</small>
+            <p>Demo mode available!</p>
+            <small>Just click Sign In to explore the app</small>
+            <button 
+              type="button" 
+              className="demo-btn"
+              onClick={() => {
+                localStorage.setItem('token', 'demo-token');
+                window.location.reload();
+              }}
+            >
+              Try Demo Mode
+            </button>
           </div>
         )}
       </div>

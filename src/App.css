@@ -171,6 +171,24 @@ body {
   cursor: not-allowed;
 }
 
+.demo-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.demo-btn:hover {
+  background: rgba(29, 155, 240, 0.1);
+}
+
 .auth-switch {
   margin-top: 24px;
   text-align: center;
