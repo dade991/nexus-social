@@ -1,16 +1,67 @@
-# React + Vite
+# Nexus - Social Media Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A modern, dark-themed social media app built with React.
 
-Currently, two official plugins are available:
+![Nexus](https://img.shields.io/badge/Nexus-Social%20Media-1d9bf0?style=for-the-badge)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ✨ Features
 
-## React Compiler
+- 📱 **Home Feed** - Create posts with text & images, like, comment, save
+- 👤 **Profile** - View & edit profile, see your posts
+- 🔔 **Notifications** - Like/follow/comment notifications
+- 💬 **Messages** - Real-time chat UI
+- 🔍 **Search** - Find users & trending topics
+- 🌙 **Dark Theme** - Beautiful dark mode UI
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Quick Start
 
-## Expanding the Oxlint configuration
+```bash
+# Install dependencies
+npm install
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+# Run dev server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+## 📦 Tech Stack
+
+- React 18
+- Vite
+- Lucide React (icons)
+- date-fns (date formatting)
+- Context API (state management)
+
+## 🌐 Deploy to Vercel
+
+1. Fork this repo or push to GitHub
+2. Go to [vercel.com](https://vercel.com)
+3. Import your GitHub repo
+4. Deploy!
+
+Your app will be live at `your-app.vercel.app`
+
+## 📁 Project Structure
+
+```
+src/
+├── components/
+│   ├── Feed.jsx
+│   ├── Messages.jsx
+│   ├── Notifications.jsx
+│   ├── Post.jsx
+│   ├── Profile.jsx
+│   ├── Search.jsx
+│   └── Sidebar.jsx
+├── context/
+│   └── SocialContext.jsx
+├── App.jsx
+├── App.css
+└── main.jsx
+```
+
+## 📄 License
+
+MIT - Feel free to use for your projects!
